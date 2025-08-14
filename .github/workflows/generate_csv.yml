@@ -1,0 +1,53 @@
+name: Generate Image CSV
+
+on:
+  push:
+    paths:
+      - 'Tableau Image Test/**'  # only run if images/subfolders change
+      - '.github/workflows/generate_csv.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Run CSV generator
+        run: |
+          import os, csv
+          from urllib.parse import quote
+
+          BASE_URL = "https://Mitchell-Bliesner.github.io/Tableau_Images"
+          ROOT_FOLDER = "Tableau Image Test"
+
+          # Find newest subfolder
+          subfolders = [os.path.join(ROOT_FOLDER, d) for d in os.listdir(ROOT_FOLDER) if os.path.isdir(os.path.join(ROOT_FOLDER, d))]
+          if not subfolders:
+              print("No subfolders found.")
+              exit(0)
+
+          newest_folder = max(subfolders, key=os.path.getmtime)
+          print(f"Newest folder: {newest_folder}")
+
+          # Scan for images
+          rows = []
+          for fname in os.listdir(newest_folder):
+              if fname.lower().endswith((".png", ".jpg", ".jpeg")):
+                  image_name = os.path.splitext(fname)[0]
+                  rel_path = quote(os.path.join(newest_folder, fname).replace("\\", "/"))
+                  image_url = f"{BASE_URL}/{rel_path}"
+                  rows.append({"image_name": image_name, "image_url": image_url})
+
+          with open("image_urls.csv", "w", newline="", encoding="utf-8") as f:
+              writer = csv.DictWriter(f, fieldnames=["image_name", "image_url"])
+              writer.writeheader()
+              writer.writerows(rows)
+
+      - name: Commit CSV
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add image_urls.csv
+          git commit -m "Update image URLs CSV" || echo "No changes to commit"
+          git push
