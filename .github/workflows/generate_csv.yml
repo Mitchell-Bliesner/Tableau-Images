@@ -3,7 +3,7 @@ name: Generate Image CSV
 on:
   push:
     paths:
-      - 'Tableau Image Test/**'       # only run when anything in this folder changes
+      - 'Test/**'       # only run when anything in this folder changes
       - '.github/workflows/generate_csv.yml'
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
           from urllib.parse import quote
 
           BASE_URL = "https://Mitchell-Bliesner.github.io/Tableau_Images"
-          ROOT_FOLDER = "Tableau Image Test"
+          ROOT_FOLDER = "Test"
 
           # Find the newest subfolder in ROOT_FOLDER
           subfolders = [os.path.join(ROOT_FOLDER, d) for d in os.listdir(ROOT_FOLDER) if os.path.isdir(os.path.join(ROOT_FOLDER, d))]
