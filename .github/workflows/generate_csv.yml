@@ -19,7 +19,7 @@ jobs:
           import os, csv
           from urllib.parse import quote
 
-          BASE_URL = "https://Mitchell-Bliesner.github.io/Tableau_Images"
+          BASE_URL = "https://mitchell-bliesner.github.io/Tableau-Images/"
           ROOT_FOLDER = "test"
 
           # Find the newest subfolder in ROOT_FOLDER
