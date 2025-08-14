@@ -1,0 +1,56 @@
+name: Generate Image CSV
+
+on:
+  push:
+    paths:
+      - 'Tableau Image Test/**'       # only run when anything in this folder changes
+      - '.github/workflows/generate_csv.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Run CSV generator
+        run: |
+          python - <<'EOF'
+          import os, csv
+          from urllib.parse import quote
+
+          BASE_URL = "https://Mitchell-Bliesner.github.io/Tableau_Images"
+          ROOT_FOLDER = "Tableau Image Test"
+
+          # Find the newest subfolder in ROOT_FOLDER
+          subfolders = [os.path.join(ROOT_FOLDER, d) for d in os.listdir(ROOT_FOLDER) if os.path.isdir(os.path.join(ROOT_FOLDER, d))]
+          if not subfolders:
+              print("No subfolders found.")
+              exit(0)
+
+          newest_folder = max(subfolders, key=os.path.getmtime)
+          print(f"Newest folder: {newest_folder}")
+
+          # Collect image info
+          rows = []
+          for fname in os.listdir(newest_folder):
+              if fname.lower().endswith((".png", ".jpg", ".jpeg")):
+                  image_name = os.path.splitext(fname)[0]
+                  rel_path = quote(os.path.join(newest_folder, fname).replace("\\", "/"))
+                  image_url = f"{BASE_URL}/{rel_path}"
+                  rows.append({"image_name": image_name, "image_url": image_url})
+
+          # Write CSV to repo root
+          with open("image_urls.csv", "w", newline="", encoding="utf-8") as f:
+              writer = csv.DictWriter(f, fieldnames=["image_name", "image_url"])
+              writer.writeheader()
+              writer.writerows(rows)
+          EOF
+
+      - name: Commit CSV back to repo
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add image_urls.csv
+          git commit -m "Update image URLs CSV" || echo "No changes to commit"
+          git push
