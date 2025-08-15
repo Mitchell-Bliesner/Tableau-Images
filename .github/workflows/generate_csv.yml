@@ -2,17 +2,24 @@ name: Generate Image CSV
 on:
   push:
     paths:
-      - 'test/**'       # only run when anything in this folder changes
+      - 'test/**'       # run only on changes inside test folder
       - '.github/workflows/generate_csv.yml'
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Run CSV generator
+
+      - name: Get changed subfolders
+        id: get_changed
         run: |
-          python - <<'EOF'
+          echo "changed=$(git diff --name-only ${{ github.sha }}~1 ${{ github.sha }} | grep '^test/' | cut -d/ -f2 | sort | uniq | tr '\n' ' ')" >> $GITHUB_OUTPUT
+
+      - name: Run CSV generator on changed subfolders
+        run: |
+          python - <<EOF
           import os, csv
           from urllib.parse import quote
 
@@ -20,9 +27,20 @@ jobs:
           ROOT_FOLDER = "test"
           CSV_FILE = "image_urls.csv"
 
-          # Gather image info from all subfolders
+          changed_folders = '${{ steps.get_changed.outputs.changed }}'.split()
+
+          # Load existing rows and URLs to avoid duplicates
+          existing_rows = []
+          existing_urls = set()
+          if os.path.exists(CSV_FILE):
+              with open(CSV_FILE, "r", encoding="utf-8", newline="") as f:
+                  reader = csv.DictReader(f)
+                  for row in reader:
+                      existing_rows.append(row)
+                      existing_urls.add(row["image_url"])
+
           new_rows = []
-          for folder_name in os.listdir(ROOT_FOLDER):
+          for folder_name in changed_folders:
               folder_path = os.path.join(ROOT_FOLDER, folder_name)
               if os.path.isdir(folder_path):
                   for fname in os.listdir(folder_path):
@@ -32,16 +50,7 @@ jobs:
                           image_url = f"{BASE_URL}/{rel_path}"
                           new_rows.append({"image_name": image_name, "image_url": image_url})
 
-          # Read old CSV to avoid duplicates
-          existing_urls = set()
-          existing_rows = []
-          if os.path.exists(CSV_FILE):
-              with open(CSV_FILE, "r", encoding="utf-8", newline="") as f:
-                  reader = csv.DictReader(f)
-                  for row in reader:
-                      existing_rows.append(row)
-                      existing_urls.add(row["image_url"])
-
+          # Append only new images
           final_rows = existing_rows.copy()
           for row in new_rows:
               if row["image_url"] not in existing_urls:
@@ -53,6 +62,7 @@ jobs:
               writer.writeheader()
               writer.writerows(final_rows)
           EOF
+
       - name: Commit CSV back to repo
         run: |
           git config --global user.name "github-actions"
