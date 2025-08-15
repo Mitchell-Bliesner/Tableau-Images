@@ -46,7 +46,7 @@ jobs:
                   for fname in os.listdir(folder_path):
                       if fname.lower().endswith((".png", ".jpg", ".jpeg")):
                           image_name = os.path.splitext(fname)[0]
-                          rel_path = quote(os.path.join(folder_path, fname).replace("\\", "/"))
+                          rel_path = quote(os.path.join(folder_path, fname).replace("\\\\", "/"))
                           image_url = f"{BASE_URL}/{rel_path}"
                           new_rows.append({"image_name": image_name, "image_url": image_url})
 
