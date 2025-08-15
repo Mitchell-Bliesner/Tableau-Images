@@ -2,7 +2,7 @@ name: Generate Image CSV
 on:
   push:
     paths:
-      - 'test/**'       # run only on changes inside test folder
+      - 'test/**'
       - '.github/workflows/generate_csv.yml'
 
 jobs:
@@ -12,12 +12,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Get changed subfolders
-        id: get_changed
+      - name: Get added subfolders from push event
+        id: get_added
         run: |
-          echo "changed=$(git diff --name-only ${{ github.sha }}~1 ${{ github.sha }} | grep '^test/' | cut -d/ -f2 | sort | uniq | tr '\n' ' ')" >> $GITHUB_OUTPUT
+          jq -r '.commits[].added[]' $GITHUB_EVENT_PATH | grep '^test/' | cut -d/ -f2 | sort | uniq > added_folders.txt
+          added=$(cat added_folders.txt | tr '\n' ' ')
+          echo "added=$added" >> $GITHUB_OUTPUT
+          echo "Added folders detected: $added"
 
-      - name: Run CSV generator on changed subfolders
+      - name: Run CSV generator on added subfolders
         run: |
           python - <<EOF
           import os
@@ -28,7 +31,7 @@ jobs:
           ROOT_FOLDER = "test"
           CSV_FILE = "image_urls.csv"
 
-          changed_folders = '${{ steps.get_changed.outputs.changed }}'.split()
+          added_folders = '${{ steps.get_added.outputs.added }}'.split()
 
           existing_rows = []
           existing_urls = set()
@@ -40,7 +43,7 @@ jobs:
                       existing_urls.add(row["image_url"])
 
           new_rows = []
-          for folder_name in changed_folders:
+          for folder_name in added_folders:
               folder_path = os.path.join(ROOT_FOLDER, folder_name)
               if os.path.isdir(folder_path):
                   for fname in os.listdir(folder_path):
