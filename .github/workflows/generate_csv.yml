@@ -12,15 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Get added subfolders from push event
-        id: get_added
-        run: |
-          jq -r '.commits[].added[]' $GITHUB_EVENT_PATH | grep '^test/' | cut -d/ -f2 | sort | uniq > added_folders.txt
-          added=$(cat added_folders.txt | tr '\n' ' ')
-          echo "added=$added" >> $GITHUB_OUTPUT
-          echo "Added folders detected: $added"
-
-      - name: Run CSV generator on added subfolders
+      - name: Run CSV generator scanning all subfolders
         run: |
           python - <<EOF
           import os
@@ -30,8 +22,6 @@ jobs:
           BASE_URL = "https://mitchell-bliesner.github.io/Tableau-Images/"
           ROOT_FOLDER = "test"
           CSV_FILE = "image_urls.csv"
-
-          added_folders = '${{ steps.get_added.outputs.added }}'.split()
 
           existing_rows = []
           existing_urls = set()
@@ -43,7 +33,7 @@ jobs:
                       existing_urls.add(row["image_url"])
 
           new_rows = []
-          for folder_name in added_folders:
+          for folder_name in os.listdir(ROOT_FOLDER):
               folder_path = os.path.join(ROOT_FOLDER, folder_name)
               if os.path.isdir(folder_path):
                   for fname in os.listdir(folder_path):
