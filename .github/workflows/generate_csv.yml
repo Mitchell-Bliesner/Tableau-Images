@@ -20,7 +20,8 @@ jobs:
       - name: Run CSV generator on changed subfolders
         run: |
           python - <<EOF
-          import os, csv
+          import os
+          import csv
           from urllib.parse import quote
 
           BASE_URL = "https://mitchell-bliesner.github.io/Tableau-Images/"
@@ -29,7 +30,6 @@ jobs:
 
           changed_folders = '${{ steps.get_changed.outputs.changed }}'.split()
 
-          # Load existing rows and URLs to avoid duplicates
           existing_rows = []
           existing_urls = set()
           if os.path.exists(CSV_FILE):
@@ -50,13 +50,11 @@ jobs:
                           image_url = f"{BASE_URL}/{rel_path}"
                           new_rows.append({"image_name": image_name, "image_url": image_url})
 
-          # Append only new images
           final_rows = existing_rows.copy()
           for row in new_rows:
               if row["image_url"] not in existing_urls:
                   final_rows.append(row)
 
-          # Write CSV
           with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
               writer = csv.DictWriter(f, fieldnames=["image_name", "image_url"])
               writer.writeheader()
